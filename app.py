@@ -3,6 +3,9 @@ from flask import Flask, request, jsonify
 from rl_agent import RLAgent
 
 app = Flask(__name__)
+@app.route("/")
+def home():
+    return "Your reinforcement learning chatbot is live. How can I help you?"
 agent = RLAgent(actions=[
     "Would you like to book a free 30-minute strategy call with us?",
     "Can I help schedule your free 30-minute session to grow your business?",
