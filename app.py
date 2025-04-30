@@ -3,42 +3,33 @@ from flask import Flask, request, jsonify
 from rl_agent import RLAgent
 
 app = Flask(__name__)
-
-# Initialize the agent with possible responses
 agent = RLAgent(actions=[
-    "Want to book a free call?",
-    "Would you like help with Facebook Ads?",
-    "Can I help you set up your funnel?",
-    "Ready to book a strategy call?",
-    "Need help attracting leads?"
+    "Would you like to book a free 30-minute strategy call with us?",
+    "Can I help schedule your free 30-minute session to grow your business?",
+    "Want me to book a time to see how we attract ready-to-buy customers?",
+    "Ready to book your complimentary 30-min strategy call?",
+    "Would you like to reserve your free 30-min consultation to automate your leads?"
 ])
-
-# Load the trained Q-table
-agent.load_q_table()
 
 REWARD_SUCCESS = 1
 REWARD_FAILURE = -1
 
-@app.route('/webhook', methods=['POST'])  # fixed "methds" typo here
+@app.route('/webhook', methods=['POST'])
 def webhook():
-    req = request.get_json(force=True)
-    query_text = req.get('queryResult', {}).get('queryText', '')
-    intent = req.get('queryResult', {}).get('intent', {}).get('displayName', 'default_session')
+    query_text = request.json['queryResult']['queryText']
+    session = request.json['session'].split('/')[-1]
+    intent = request.json['queryResult']['intent']['displayName']
 
     state = intent
     action = agent.get_action(state)
 
-    # Define when the chatbot "succeeds"
-    if any(word in query_text.lower() for word in ["book", "schedule", "appointment", "talk", "call", "strategy", "meeting"]):
-        reward = REWARD_SUCCESS
+    # simple rule: if the query contains a strong intent to book, give a reward
+    if any(word in query_text.lower() for word in ["book", "schedule", "appointment", "call", "strategy", "meeting"]):
+        agent.update(state, action, REWARD_SUCCESS, state)
     else:
-        reward = REWARD_FAILURE
+        agent.update(state, action, REWARD_FAILURE, state)
 
-    agent.update(state=state, action=action, reward=reward, next_state=state)
-
-    return jsonify({
-        'fulfillmentText': action
-    })
+    return jsonify({'fulfillmentText': action})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=10000)
